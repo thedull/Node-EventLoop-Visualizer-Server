@@ -6,8 +6,9 @@ function debug(...args) {
 }
 const asyncIdToResource = {};
 const init = (asyncId, type, triggerAsyncId, resource) => {
+  debug(asyncId, type, triggerAsyncId, resource);
   asyncIdToResource[asyncId] = resource;
-  if (type === 'PROMISE') {
+  if (type.toUpperCase().startsWith('PROMISE')) {
     postEvent(Events.InitPromise(asyncId, triggerAsyncId));
   }
   if (type === 'Timeout') {
@@ -19,11 +20,11 @@ const init = (asyncId, type, triggerAsyncId, resource) => {
     const callbackName = resource._onImmediate.name || 'anonymous';
     postEvent(Events.InitImmediate(asyncId, callbackName));
   }
-  // if (type === 'Microtask') {
-  //   const callbackName = resource.callback.name || 'anonymous';
-  //   debug(resource);
-  //   postEvent(Events.InitMicrotask(asyncId, triggerAsyncId, callbackName));
-  // }
+  if (type === 'Microtask') {
+    const callbackName = resource.callback?.name || 'anonymous';
+    debug('Microtask: ', resource);
+    postEvent(Events.InitMicrotask(asyncId, triggerAsyncId, callbackName));
+  }
   if (
     type === 'TickObject' &&
     resource.callback.name !== 'maybeReadMore_' &&
@@ -34,10 +35,11 @@ const init = (asyncId, type, triggerAsyncId, resource) => {
     resource.callback.name !== 'emitCloseNT' &&
     resource.callback.name !== 'endReadableNT' &&
     resource.callback.name !== 'finish' &&
-    resource.callback.name !== 'resume_'
+    resource.callback.name !== 'onError' &&
+    resource.callback.name !== 'resume_' 
   ) {
-    const callbackName = resource.callback.name || 'anonymous';
-    debug(callbackName);
+    const callbackName = resource?.callback?.name || 'microtask';
+    debug(`Tick: ${callbackName}`);
     postEvent(Events.InitMicrotask(asyncId, triggerAsyncId, callbackName));
   }
 };
@@ -45,7 +47,7 @@ const init = (asyncId, type, triggerAsyncId, resource) => {
 const before = (asyncId) => {
   const resource = asyncIdToResource[asyncId] || {};
   const resourceName = resource.constructor.name;
-  if (resourceName === 'PromiseWrap') {
+  if (resourceName.toUpperCase().startsWith('PROMISE')) {
     postEvent(Events.BeforePromise(asyncId));
   }
   if (resourceName === 'Timeout') {
@@ -72,20 +74,20 @@ const before = (asyncId) => {
     const callbackName = resource.callback.name || 'anonymous';
     postEvent(Events.BeforeMicrotask(asyncId, callbackName));
   }
-  // if (resourceName === 'AsyncResource') {
-  //   postEvent(Events.BeforeMicrotask(asyncId));
-  // }
+  if (resourceName === 'AsyncResource') {
+    postEvent(Events.BeforeMicrotask(asyncId));
+  }
 };
 
 const after = (asyncId) => {
   const resource = asyncIdToResource[asyncId] || {};
   const resourceName = resource.constructor.name;
-  if (resourceName === 'PromiseWrap') {
+  if (resourceName.toUpperCase().startsWith('PROMISE')) {
     postEvent(Events.AfterPromise(asyncId));
   }
-  // if (resourceName === 'AsyncResource') {
-  //   postEvent(Events.AfterMicrotask(asyncId));
-  // }
+  if (resourceName === 'AsyncResource') {
+    postEvent(Events.AfterMicrotask(asyncId));
+  }
 };
 
 const destroy = (asyncId) => {

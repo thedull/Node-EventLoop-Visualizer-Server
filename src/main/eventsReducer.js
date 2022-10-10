@@ -19,7 +19,9 @@ const eventsReducer = (state, evt) => {
       state.events.push({ type: 'DequeueMicrotask', payload: {} });
       state.events.push(evt);
     } else if (state.prevEvt.type === 'BeforeMicrotask') {
-      state.events.push({ type: 'DequeueMicrotask', payload: {} });
+      // const isFromNextTick = state.events.find((event) => event.type==='InitMicrotask' && event.payload.asyncID===state.prevEvt.payload.asyncID);
+      //   if (isFromNextTick)
+          state.events.push({ type: 'DequeueMicrotask', payload: {} }); // TODO: Avoid dequeueing for nextTick
       state.events.push(evt);
     } else if (state.prevEvt.type === 'BeforeTimeout') {
       state.events.push({ type: 'EnqueueTask', payload: evt.payload });
@@ -57,20 +59,23 @@ const eventsReducer = (state, evt) => {
       ({ asyncID }) => asyncID === payload.asyncID
     );
 
-    if (microtaskInfo) {
+    if (
+      (microtaskInfo) || 
+      (state.prevEvt.type!=='InitPromise') ||
+      (state.prevEvt.type==='EnterFunction' && state.prevEvt.payload.name==='queueMicrotask')) {
       state.events.push({
         type: 'EnqueueMicrotask',
-        payload: { name: microtaskInfo.name },
+        payload: { name: microtaskInfo?.name || 'microtask' },  // TODO: Get callback name for q'd µtasks
       });
     }
   }
   if (type === 'BeforeMicrotask') {
-    if (state.prevEvt.type === 'InitMicrotask') {
-      state.events.push({
-        type: 'EnqueueMicrotask',
-        payload: { name: evt.payload.name },
-      });
-    }
+  //   if (state.prevEvt.type === 'InitMicrotask') {   // TODO: Fix for nextTick
+  //     state.events.push({
+  //       type: 'EnqueueMicrotask',
+  //       payload: { name: evt.payload.name },
+  //     });
+  //   }
     state.events.push(evt);
   }
   if (type === 'AfterMicrotask') state.events.push(evt);
